@@ -24,19 +24,20 @@ void imprimeMensagem(char msg[1000]) {
     printf("*\n");
     printf("************************\n");
 }
-
 char imprimeCelula(int celula, int etapa) {
     if (etapa == 0) {
-        if (celula == 0) return '.';
-        if (celula == -1) return '*';
-        if (celula >= 1 && celula <= 3) return '0' + celula;
+        // Etapa 0: Mostra o estado atual da célula
+        if (celula == 0) return '.';  // Representa um espaço vazio
+        if (celula == -1) return '*'; // Representa um obstáculo
+        if (celula >= 1 && celula <= 3) return '0' + celula;  // Representa um jogador (1, 2, 3)
     } else if (etapa == 1) {
-        if (celula == 0 || celula == 1 || celula == -1 || celula == 2 || celula == 3) return '.';
-        if (celula == -2) return 'x';
-        if (celula == 10 || celula == 20 || celula == 30) return 'N';
-        if (celula == 50) return 'A';
+        // Etapa 1: Matriz oculta, onde todos os valores são '.'
+        if (celula == 0 || celula == -1 || celula == 1 || celula == 2 || celula == 3) return '.';  // Mantém a matriz oculta
+        if (celula == -2) return 'x';  // Representa um acerto (barco atingido)
+        if (celula == 10 || celula == 20 || celula == 30) return 'N'; // N pode ser um novo estado
+        if (celula == 50) return 'A'; // Representa algo importante, como um alvo
     }
-    return '?';
+    return '?';  // Caso inesperado
 }
 
 void imprimeTabuleiro(int mat[5][5], int etapa) {

@@ -34,7 +34,7 @@ const uint I2C_SCL = 15;
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
-int eixox = 2, eixoy = 2;
+int joys[2];
 struct pixel_t {
     uint8_t G, R, B;
 };
@@ -102,10 +102,10 @@ void inicializarBotoes() {
     gpio_set_dir(BUTTON_B_PIN, GPIO_IN);
     gpio_pull_up(BUTTON_A_PIN);
     gpio_pull_up(BUTTON_B_PIN);
-    gpio_init(eixox);
-    gpio_init(eixoy);
-    gpio_pull_up(eixox);
-    gpio_pull_up(eixoy);
+    gpio_init(joys[0]);
+    gpio_init(joys[1]);
+    gpio_pull_up(joys[0]);
+    gpio_pull_up(joys[1]);
 }
 
 void inicializarDisplay() {
@@ -154,39 +154,135 @@ void atualizaTela(char *text1, char *text2, char *text3) {
     render_on_display(ssd, &frame_area);
 }
 
-void posicaoDeBarcos(int player2[5][5]) {
-    printf("função de posiciona barco\n");
-    for (int i = 0; i < 4; i++) {
-        atualizaTela("Posicione", "seus barcos", "");
-        imprimeTabuleiro(player2, 0);
-        posicionaBarco(player2, 1);
+void atualizaLedsComTabuleiro(int player2[5][5], int qualtab, int joys[2]) {
+    int linha_cursor = joys[0];  // Eixo Y do joystick (linha)
+    int coluna_cursor = joys[1]; // Eixo X do joystick (coluna)
+
+    if (qualtab == 1) {
+        // Fase de posicionamento de barcos (não usa joystick aqui)
+        for (int linha = 0; linha < 5; linha++) {
+            for (int coluna = 0; coluna < 5; coluna++) {
+                int index = linha * 5 + coluna; // Mapeia a posição para o índice do LED
+
+                // Se tiver um barco, acende o LED com a cor vermelha
+                if (player2[linha][coluna] == 1) {
+                    npSetLED(index, 255, 0, 0);  // Vermelho
+                } else {
+                    npSetLED(index, 0, 255, 0);  // Verde
+                }
+            }
+        }
+    } else {
+        // Fase de ataque (usa joystick)
+        // Garantir que o valor do joystick não ultrapasse o limite da matriz
+        linha_cursor = linha_cursor < 0 ? 0 : (linha_cursor > 4 ? 4 : linha_cursor);
+        coluna_cursor = coluna_cursor < 0 ? 0 : (coluna_cursor > 4 ? 4 : coluna_cursor);
+
+        for (int linha = 0; linha < 5; linha++) {
+            for (int coluna = 0; coluna < 5; coluna++) {
+                int index = linha * 5 + coluna; // Mapeia a posição para o índice do LED
+
+                // Se for a posição do cursor, muda para azul (ou outra cor destacada)
+                if (linha == linha_cursor && coluna == coluna_cursor) {
+                    npSetLED(index, 0, 0, 255);  // Azul para destaque
+                } else {
+                    npSetLED(index, 0, 125, 255);  // Azul claro para o restante
+                }
+            }
+        }
     }
+
+    npWrite(); // Aplica as mudanças nos LEDs
 }
 
-void executarTurno(int *pts1, int *jogadas, int player2[5][5]) {
+void posicaoDeBarcos(int player2[5][5]) {
+    printf("função de posiciona barco\n");
+
+    for (int i = 0; i < 4; i++) {
+        int linha, coluna1, linha1;
+        char coluna;
+
+        atualizaTela("Posicione", "seus barcos", "");
+        imprimeTabuleiro(player2, 0);  // Atualiza na tela
+
+        do {
+            scanf("%d %c", &linha, &coluna);
+            coluna1 = coluna - 'A';
+            linha1 = linha - 1;
+
+            if (!validaEntradaLinhaColuna(linha, coluna) || !validaPosicao(player2, 1, linha1, coluna1, 'V')) {
+                printf("Posicao indisponivel! Tente novamente.\n");
+            }
+        } while (!validaEntradaLinhaColuna(linha, coluna) || !validaPosicao(player2, 1, linha1, coluna1, 'V'));
+
+        // Marcar a área ao redor como indisponível (-1)
+        // Como a matriz é 5x5, usamos limite < 5
+        for (int m = linha1 - 1; m <= linha1 + 1; m++) {
+            for (int n = coluna1 - 1; n <= coluna1 + 1; n++) {
+                if (m >= 0 && m < 5 && n >= 0 && n < 5) {
+                    player2[m][n] = -1;
+                }
+            }
+        }
+        // Definir a posição do barco
+        player2[linha1][coluna1] = 1;
+
+        atualizaLedsComTabuleiro(player2, 1, (int[]){-1, -1}); // Atualiza os LEDs com o estado do tabuleiro
+    }
+
+    imprimeTabuleiro(player2, 0);
+}
+
+void executarTurno(int *pts1, int *jogadas, int player2[5][5], int joys[2]) {
     char mensagem[16];
     sprintf(mensagem, "Pontos: %d", *pts1);
     atualizaTela("VEZ DO JOGADOR 1", "", mensagem);
     printf("função de executar turno\n");
 
-    imprimeTabuleiro(player2, 1);
+    // Leitura dos dados analógicos do joystick
+    int analogico_x = joys[0];  // Eixo X do joystick
+    int analogico_y = joys[1];  // Eixo Y do joystick
 
-    int pos = 0, kleber = 0;
-    while (gpio_get(BUTTON_A_PIN)) { sleep_ms(100); }
-    pos = (pos + 1) % 5;
+    // Garantir que o valor do joystick não ultrapasse o limite da matriz
+    int linha_cursor = analogico_y < 0 ? 0 : (analogico_y > 4 ? 4 : analogico_y);  // Eixo Y (linha)
+    int coluna_cursor = analogico_x < 0 ? 0 : (analogico_x > 4 ? 4 : analogico_x);  // Eixo X (coluna)
 
-    while (gpio_get(BUTTON_B_PIN)) { sleep_ms(100); }
-    kleber = (kleber + 1) % 5;
+    // Atualizar a tela e os LEDs com o estado atual do tabuleiro
+    imprimeTabuleiro(player2, 1); // Atualiza na tela (oculta)
+    atualizaLedsComTabuleiro(player2, 2, joys); // Atualiza os LEDs
 
+    // Controle com joystick analógico para navegar pela matriz
+    int pos = linha_cursor;  // Linha do joystick
+    int kleber = coluna_cursor;  // Coluna do joystick
+
+    // Verificar se a posição é válida e pode atirar
     if (validaEntradaLinhaColuna(pos, kleber) && podeAtirar(player2, pos, kleber)) {
         atirar(player2, pos, kleber);
-        *pts1 += calculaPontuacao(player2, pos, kleber);
+
+        // Marcar a célula com um acerto
+        if (player2[pos][kleber] == 1 || player2[pos][kleber] == 2 || player2[pos][kleber] == 3) {
+            player2[pos][kleber] = -2;  // Marca o acerto (X)
+            *pts1 += calculaPontuacao(player2, pos, kleber);
+        }
     } else {
         atualizaTela("Posicao", "invalida!", "");
         sleep_ms(1000);
     }
     (*jogadas)++;
+
+    // Verificar estado da matriz após atualização
+    printf("Matriz após atualização:\n");
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            printf("%d ", player2[i][j]);
+        }
+        printf("\n");
+    }
+
+    // Atualiza os LEDs após o turno
+    atualizaLedsComTabuleiro(player2, 2, joys);
 }
+
 
 int main() {
     printf("iniciou a main\n");
@@ -209,12 +305,20 @@ int main() {
     atualizaTela("Iniciando Jogo!", "", "");
 
     posicaoDeBarcos(player2);
+    printf("matriz finalizada :\n");
+
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            printf("%d ", player2[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
     printf("função de antes do while\n");
     while (jogadas < 41 && pts1 < 42) {
-        executarTurno(&pts1, &jogadas, player2);
+        executarTurno(&pts1, &jogadas, player2, joys);
     }
 
     atualizaTela("FIM DE JOGO!", "", "");
     return 0;
 }
-
