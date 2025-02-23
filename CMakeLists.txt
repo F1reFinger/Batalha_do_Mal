@@ -23,7 +23,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico CACHE STRING "Board type")
+set(PICO_BOARD pico_w CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
@@ -35,7 +35,7 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(Batalha_do_Mal Batalha_do_Mal.c inc/ssd1306_i2c.c)
+add_executable(Batalha_do_Mal Batalha_do_Mal.c inc/ssd1306_i2c.c inc/ships.c)
 
 pico_set_program_name(Batalha_do_Mal "Batalha_do_Mal")
 pico_set_program_version(Batalha_do_Mal "0.1")
@@ -54,6 +54,7 @@ target_link_libraries(Batalha_do_Mal
 # Add the standard include files to the build
 target_include_directories(Batalha_do_Mal PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
+        inc  # Include the directory where ships.h is located
 )
 
 # Add any user requested libraries
