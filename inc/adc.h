@@ -11,18 +11,11 @@
 #include "hardware/structs/adc.h"
 #include "hardware/gpio.h"
 
-#include "adc_config.h"  // Exemplo de inclusão do arquivo de configuração
-
 // Se REG_FIELD_WIDTH não for encontrado, tente definir ela
 #define REG_FIELD_WIDTH(x)  (x)  // Definição genérica, ajuste conforme necessário
 
 // Certifique-se de que ADC_DIV_FRAC esteja definido corretamente
 #define ADC_DIV_FRAC 5  // Defina o valor correto aqui
-
-void adc_set_clkdiv() {
-    const int frac_bit_count = REG_FIELD_WIDTH(ADC_DIV_FRAC);
-    // Continue com a implementação
-}
 
 /** \file hardware/adc.h
  *  \defgroup hardware_adc hardware_adc

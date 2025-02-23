@@ -36,7 +36,9 @@ Outro ponto importante é que este projeto foi desenvolvido para a disciplina de
 ## 2. Hardware
 
 ### Diagrama em Blocos
-[Inserir diagrama representando as conexões entre os componentes]
+![BlocosHard](./images/Diagrama%20em%20branco.png)
+imagem de autoria do autor
+
 
 ### Função de Cada Bloco
 - **Matriz de LEDs (5x5):** Representa o campo de batalha.
@@ -72,12 +74,17 @@ O projeto atende aos requisitos de baixo custo, tamanho compacto e baixo consumo
 | 6     | Botão B                   |
 
 ### Circuito Completo do Hardware
-[Inserir circuito completo do hardware]
+![Circuito de hardware da pagina oficial da embarcatech](/images/image-7.png)
+
+imagem 3 circuito de hardware oficial disponivel em: https://embarcados.com.br/bitdoglab-uma-jornada-educativa-com-eletronica-embarcados-e-ia/
+
 
 ## 3. Software
 
 ### Blocos Funcionais
-[Diagrama de autoria própria]
+![diagrama de blocos](./images/camadas.png)
+imagem de autoria do autor
+
 
 ### Descrição das Funcionalidades
 - Inicialização do hardware.
@@ -92,7 +99,9 @@ O projeto atende aos requisitos de baixo custo, tamanho compacto e baixo consumo
 - **score:** Pontuação do jogador.
 
 ### Fluxograma
-[Diagrama de autoria própria]
+![Fluxograma](./images/fluxogame.png)
+imagem de autoria do autor
+
 
 ### Inicialização
 - Configuração dos pinos.
@@ -135,6 +144,8 @@ O projeto demonstrou ser funcional e responsivo, oferecendo uma experiência int
 [Vídeo 1 - Demonstração](https://youtube.com/shorts/z77axaXgo5c?feature=share)  
 [Vídeo 2 - Melhor Execução](https://youtube.com/shorts/eb-9ZTmEx_k?feature=share)
 
+OBS: os videos estão disponiveis no repositorio na pasta imagens
+
 ## Conclusão
 
 O objetivo deste projeto é ser um projeto facilmente replicável tanto a nível de desenvolvimento de programação para sistemas operacionais mais robustos quanto para sistemas embarcados.
@@ -148,6 +159,9 @@ O código de Batalha Naval pode ser encontrado na íntegra no repositório do pr
 ### Fontes
 - Repositório dos quais foram aproveitados exemplos:  
   [GitHub - BitDogLab](https://github.com/BitDogLab/BitDogLab-C)
+
+- Repositório oficial da bitdoglab:  
+  [pagina oficial - BitDogLab](https://embarcados.com.br/bitdoglab-uma-jornada-educativa-com-eletronica-embarcados-e-ia/)
   
 - Algumas funções de ponteiros:  
   [Tutorial de Funções de Ponteiros](https://www.tutorialspoint.com/c_standard_library/stdio_h.htm)

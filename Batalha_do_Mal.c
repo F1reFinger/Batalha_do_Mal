@@ -11,6 +11,7 @@
 #include "ws2818b.pio.h"
 #include <math.h>
 #include "ships.h"
+#include "inc/adc.h"
 
 // I2C defines
 // This example will use I2C0 on GPIO8 (SDA) and GPIO9 (SCL) running at 400KHz.
