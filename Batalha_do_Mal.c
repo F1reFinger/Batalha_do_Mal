@@ -14,24 +14,19 @@
 #include "inc/adc.h"
 
 // I2C defines
-// This example will use I2C0 on GPIO8 (SDA) and GPIO9 (SCL) running at 400KHz.
-// Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
 const uint I2C_SDA = 14;
 const uint I2C_SCL = 15;
 
 #define LED_COUNT 25
 #define LED_PIN 7
 #define NUM_LEDS 25
-#define BRIGHTNESS 255
+#define BRIGHTNESS 50
 #define BUTTON_A_PIN 5
 #define BUTTON_B_PIN 6
+
 // UART defines
-// By default the stdout UART is `uart0`, so we will use the second one
 #define UART_ID uart1
 #define BAUD_RATE 115200
-
-// Use pins 4 and 5 for UART1
-// Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
@@ -67,9 +62,9 @@ void npInit(uint pin) {
 }
 
 void npSetLED(const uint index, const uint8_t r, const uint8_t g, const uint8_t b) {
-    leds[index].R = r;
-    leds[index].G = g;
-    leds[index].B = b;
+    leds[index].R = (r * BRIGHTNESS) / 255;
+    leds[index].G = (g * BRIGHTNESS) / 255;
+    leds[index].B = (b * BRIGHTNESS) / 255;
 }
 
 void npClear() {
@@ -96,21 +91,20 @@ int64_t alarm_callback(alarm_id_t id, void *user_data) {
 }
 
 void inicializarBotoes() {
-    printf("função de inicia botão\n");
+    printf("Função de inicializar botão\n");
     gpio_init(BUTTON_A_PIN);
     gpio_init(BUTTON_B_PIN);
     gpio_set_dir(BUTTON_A_PIN, GPIO_IN);
     gpio_set_dir(BUTTON_B_PIN, GPIO_IN);
     gpio_pull_up(BUTTON_A_PIN);
     gpio_pull_up(BUTTON_B_PIN);
-    gpio_init(joys[0]);
-    gpio_init(joys[1]);
-    gpio_pull_up(joys[0]);
-    gpio_pull_up(joys[1]);
+    adc_init();
+    adc_gpio_init(26);  // X-axis pin
+    adc_gpio_init(27);  // Y-axis pin
 }
 
 void inicializarDisplay() {
-    printf("função de inicia display\n");
+    printf("Função de inicializar display\n");
     i2c_init(i2c1, ssd1306_i2c_clock * 1000);
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
@@ -120,23 +114,23 @@ void inicializarDisplay() {
 }
 
 void inicializarLed() {
-    printf("função de inicia led\n");
+    printf("Função de inicializar LED\n");
     npInit(LED_PIN);
     for (int i = 0; i < LED_COUNT; i++) {
-        npSetLED(i, 250, 156, 28); // Orange for all LEDs
+        npSetLED(i, 250, 156, 28); // Laranja com brilho reduzido
     }
     npWrite();
 }
 
 void esperarBotaoPressionado() {
-    printf("função de esperar botão\n");
+    printf("Função de esperar botão pressionado\n");
     while (gpio_get(BUTTON_B_PIN)) {
         sleep_ms(100);
     }
 }
 
 void atualizaTela(char *text1, char *text2, char *text3) {
-    printf("função de atualiza tela\n");
+    printf("Função de atualizar tela\n");
     struct render_area frame_area = {
         .start_column = 0,
         .end_column = ssd1306_width - 1,
@@ -155,26 +149,33 @@ void atualizaTela(char *text1, char *text2, char *text3) {
     render_on_display(ssd, &frame_area);
 }
 
+void read_joystick(int joys[2]) {
+    adc_select_input(0);  // Select X-axis (GPIO 26)
+    joys[0] = 4095 - adc_read();  // Invert X-axis value
+    adc_select_input(1);  // Select Y-axis (GPIO 27)
+    joys[1] = 4095 - adc_read();  // Invert Y-axis value
+}
+
 void atualizaLedsComTabuleiro(int player2[5][5], int qualtab, int joys[2]) {
-    int linha_cursor = joys[0];  // Eixo Y do joystick (linha)
-    int coluna_cursor = joys[1]; // Eixo X do joystick (coluna)
+    int linha_cursor = joys[0] * 5 / 4096;  // Map X-axis to 0-4
+    int coluna_cursor = joys[1] * 5 / 4096; // Map Y-axis to 0-4
 
     if (qualtab == 1) {
-        // Fase de posicionamento de barcos (não usa joystick aqui)
+        // Fase de posicionamento de barcos (mostra os barcos)
         for (int linha = 0; linha < 5; linha++) {
             for (int coluna = 0; coluna < 5; coluna++) {
                 int index = linha * 5 + coluna; // Mapeia a posição para o índice do LED
 
                 // Se tiver um barco, acende o LED com a cor vermelha
                 if (player2[linha][coluna] == 1) {
-                    npSetLED(index, 255, 0, 0);  // Vermelho
+                    npSetLED(index, 255, 0, 0);  // Vermelho com brilho reduzido
                 } else {
-                    npSetLED(index, 0, 255, 0);  // Verde
+                    npSetLED(index, 0, 255, 0);  // Verde com brilho reduzido
                 }
             }
         }
     } else {
-        // Fase de ataque (usa joystick)
+        // Fase de ataque (esconde os barcos, mostra apenas acertos e erros)
         // Garantir que o valor do joystick não ultrapasse o limite da matriz
         linha_cursor = linha_cursor < 0 ? 0 : (linha_cursor > 4 ? 4 : linha_cursor);
         coluna_cursor = coluna_cursor < 0 ? 0 : (coluna_cursor > 4 ? 4 : coluna_cursor);
@@ -183,11 +184,13 @@ void atualizaLedsComTabuleiro(int player2[5][5], int qualtab, int joys[2]) {
             for (int coluna = 0; coluna < 5; coluna++) {
                 int index = linha * 5 + coluna; // Mapeia a posição para o índice do LED
 
-                // Se for a posição do cursor, muda para azul (ou outra cor destacada)
+                // Se for a posição do cursor, muda para laranja
                 if (linha == linha_cursor && coluna == coluna_cursor) {
-                    npSetLED(index, 0, 0, 255);  // Azul para destaque
+                    npSetLED(index, 255, 165, 0);  // Laranja com brilho reduzido
+                } else if (player2[linha][coluna] == -2) {
+                    npSetLED(index, 255, 255, 255);  // Branco com brilho reduzido
                 } else {
-                    npSetLED(index, 0, 125, 255);  // Azul claro para o restante
+                    npSetLED(index, 0, 125, 255);  // Azul claro com brilho reduzido
                 }
             }
         }
@@ -234,42 +237,59 @@ void posicaoDeBarcos(int player2[5][5]) {
     imprimeTabuleiro(player2, 0);
 }
 
+bool botao_selecao_pressionado() {
+    return !gpio_get(BUTTON_A_PIN);  // Retorna true se o botão foi pressionado
+}
+
+bool validaEntradaColunaLinha(int linha, int coluna) {
+    return (linha >= 0 && linha < 5 && coluna >= 0 && coluna < 5);
+}
+
 void executarTurno(int *pts1, int *jogadas, int player2[5][5], int joys[2]) {
     char mensagem[16];
     sprintf(mensagem, "Pontos: %d", *pts1);
     atualizaTela("VEZ DO JOGADOR 1", "", mensagem);
     printf("função de executar turno\n");
 
-    // Leitura dos dados analógicos do joystick
-    int analogico_x = joys[0];  // Eixo X do joystick
-    int analogico_y = joys[1];  // Eixo Y do joystick
+    int linha_cursor, coluna_cursor;
+    bool jogada_realizada = false;
 
-    // Garantir que o valor do joystick não ultrapasse o limite da matriz
-    int linha_cursor = analogico_y < 0 ? 0 : (analogico_y > 4 ? 4 : analogico_y);  // Eixo Y (linha)
-    int coluna_cursor = analogico_x < 0 ? 0 : (analogico_x > 4 ? 4 : analogico_x);  // Eixo X (coluna)
+    while (!jogada_realizada) {
+        // Ler o joystick continuamente
+        read_joystick(joys);
+        linha_cursor = joys[0] * 5 / 4096;  // Map X-axis to 0-4
+        coluna_cursor = joys[1] * 5 / 4096; // Map Y-axis to 0-4
 
-    // Atualizar a tela e os LEDs com o estado atual do tabuleiro
-    imprimeTabuleiro(player2, 1); // Atualiza na tela (oculta)
-    atualizaLedsComTabuleiro(player2, 2, joys); // Atualiza os LEDs
+        // Garantir que o cursor não ultrapasse os limites da matriz
+        linha_cursor = linha_cursor < 0 ? 0 : (linha_cursor > 4 ? 4 : linha_cursor);
+        coluna_cursor = coluna_cursor < 0 ? 0 : (coluna_cursor > 4 ? 4 : coluna_cursor);
 
-    // Controle com joystick analógico para navegar pela matriz
-    int pos = linha_cursor;  // Linha do joystick
-    int kleber = coluna_cursor;  // Coluna do joystick
+        // Atualizar a tela e os LEDs com o estado atual do tabuleiro
+        imprimeTabuleiro(player2, 1); // Atualiza na tela (oculta)
+        atualizaLedsComTabuleiro(player2, 2, joys); // Atualiza os LEDs
 
-    // Verificar se a posição é válida e pode atirar
-    if (validaEntradaLinhaColuna(pos, kleber) && podeAtirar(player2, pos, kleber)) {
-        atirar(player2, pos, kleber);
+        // Verificar se o botão de seleção foi pressionado
+        if (botao_selecao_pressionado()) {
+            // Verificar se a posição é válida e pode atirar
+            if (validaEntradaColunaLinha(linha_cursor, coluna_cursor) && podeAtirar(player2, linha_cursor, coluna_cursor)) {
+                atirar(player2, linha_cursor, coluna_cursor);
 
-        // Marcar a célula com um acerto
-        if (player2[pos][kleber] == 1 || player2[pos][kleber] == 2 || player2[pos][kleber] == 3) {
-            player2[pos][kleber] = -2;  // Marca o acerto (X)
-            *pts1 += calculaPontuacao(player2, pos, kleber);
+                // Marcar a célula com um acerto
+                if (player2[linha_cursor][coluna_cursor] == 1 || player2[linha_cursor][coluna_cursor] == 2 || player2[linha_cursor][coluna_cursor] == 3) {
+                    player2[linha_cursor][coluna_cursor] = -2;  // Marca o acerto (X)
+                    *pts1 += calculaPontuacao(player2, linha_cursor, coluna_cursor);
+                }
+                jogada_realizada = true;  // Jogada foi realizada
+            } else {
+                atualizaTela("Posicao", "invalida!", "");
+                sleep_ms(1000);
+            }
         }
-    } else {
-        atualizaTela("Posicao", "invalida!", "");
-        sleep_ms(1000);
+
+        sleep_ms(100);  // Pequeno delay para evitar leitura excessiva
     }
-    (*jogadas)++;
+
+    (*jogadas)++;  // Incrementa o número de jogadas
 
     // Verificar estado da matriz após atualização
     printf("Matriz após atualização:\n");
@@ -283,7 +303,6 @@ void executarTurno(int *pts1, int *jogadas, int player2[5][5], int joys[2]) {
     // Atualiza os LEDs após o turno
     atualizaLedsComTabuleiro(player2, 2, joys);
 }
-
 
 int main() {
     printf("iniciou a main\n");

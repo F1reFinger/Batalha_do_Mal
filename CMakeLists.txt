@@ -65,6 +65,7 @@ target_link_libraries(Batalha_do_Mal
         hardware_timer
         hardware_watchdog
         hardware_clocks
+        hardware_adc
         
         )
 
